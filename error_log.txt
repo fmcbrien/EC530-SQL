@@ -1,0 +1,2 @@
+Error executing query: incomplete input
+Error executing query: no such table: test
