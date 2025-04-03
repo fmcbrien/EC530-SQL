@@ -2,6 +2,12 @@ import pandas as pd
 import sqlite3
 import os
 import sys
+from openai import OpenAI
+
+# OpenAI API key
+client = OpenAI(
+    api_key = "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"
+) #INSERT KEY HERE#
 
 # Function to log errors encountered
 def log_error(error_message):
@@ -122,6 +128,30 @@ def list_tables(conn):
         log_error(f"Error listing tables: {str(e)}")
         print(f"Error listing tables: {str(e)}")
 
+# Function to interact with OpenAI API and convert plain text to SQL queries
+def generate_sql_from_text(plain_text):
+    try:
+        # Call OpenAI API to generate SQL based on plain text
+        prompt = f"Convert the following plain text request into an SQL query:\n\n'{plain_text}'\n\nSQL Query:"
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an AI that can convert plain text to SQL."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150,
+            temperature=0.7
+        )
+        
+        sql_query = response['choices'][0]['message']['content'].strip()
+        return sql_query
+    
+    except Exception as e:
+        log_error(f"Error generating SQL: {str(e)}")
+        print(f"Error generating SQL: {str(e)}")
+        return None
+
 # Main function to simulate the interactive assistant
 def interactive_assistant():
     print("Welcome to the Database Assistant using Python CLI")
@@ -132,7 +162,7 @@ def interactive_assistant():
 
     while True:
         # Display the prompt and get user input
-        user_input = input("\nWhat would you like to do? (load, query, list, exit): ").strip().lower()
+        user_input = input("\nWhat would you like to do? (load, query, list, plain text, exit): ").strip().lower()
 
         if user_input == "load":
             # Prompt user for CSV file path
@@ -157,6 +187,18 @@ def interactive_assistant():
         elif user_input == "exit":
             print("Goodbye!")
             break  # Exit the loop and end the program
+
+        elif user_input == "plain text":
+            # Ask the user for plain text instructions
+            plain_text = input("Enter your instruction (e.g., 'show me all records where age > 30'): ").strip()
+            
+            # Get SQL query from OpenAI based on plain text input
+            sql_query = generate_sql_from_text(plain_text)
+            if sql_query:
+                print(f"Generated SQL Query: {sql_query}")
+                execute_sql_query(conn, sql_query)
+            else:
+                print("Sorry, I couldn't understand your request. Please try again.")
 
         else:
             print("Invalid input. Please type 'load', 'query', 'list', or 'exit'.")
